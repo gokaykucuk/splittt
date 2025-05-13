@@ -1,6 +1,4 @@
-# Splittt
-
-![Splittt Logo](docs/logo.svg)
+# <img src="docs/logo.svg" alt="Splittt Logo" width="24" height="24"> Splittt
 
 Splittt is a fast and simple command-line tool written in Rust to chunk and save a given PDF file into a new folder. It is designed with performance in mind and aims to be easy to use and understand.
 
