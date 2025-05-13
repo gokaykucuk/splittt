@@ -1,5 +1,7 @@
 # Splittt
 
+![Splittt Logo](docs/logo.svg)
+
 Splittt is a fast and simple command-line tool written in Rust to chunk and save a given PDF file into a new folder. It is designed with performance in mind and aims to be easy to use and understand.
 
 ## Features
@@ -46,15 +48,29 @@ The `splittt` executable takes the following command-line arguments:
 
 *   `-i, --input <INPUT>`: Path to the input PDF file.
 *   `-o, --output <OUTPUT>`: Path to the output directory where the chunks will be saved.
-*   `-c, --chunk-size <CHUNK_SIZE>`: Number of pages per chunk (default: 10).
+*   `-m, --mode <MODE>`: Splitting mode. Can be `page-size` (default) or `num-chunks`.
+*   `-c, --chunk-size <CHUNK_SIZE>`: Number of pages per chunk (used with `--mode page-size`, default: 10).
+*   `--num-chunks <NUM_CHUNKS>`: Number of equal chunks (used with `--mode num-chunks`, default: 3).
 
-Example:
+### Splitting by Page Size
+
+To split the PDF into chunks of a specified number of pages, use the `--mode page-size` argument (or omit it, as it's the default) and the `-c, --chunk-size` argument:
 
 ```bash
-./target/release/splittt -i input.pdf -o output_chunks -c 5
+./target/release/splittt -i input.pdf -o output_chunks -m page-size -c 5
 ```
 
 This command will split `input.pdf` into chunks of 5 pages each and save them in the `output_chunks` directory.
+
+### Splitting into N Equal Chunks
+
+To split the PDF into a specified number of equal chunks, use the `--mode num-chunks` argument and the `--num-chunks` argument:
+
+```bash
+./target/release/splittt -i input.pdf -o output_chunks -m num-chunks --num-chunks 3
+```
+
+This command will split `input.pdf` into 3 equal chunks and save them in the `output_chunks` directory. If `--num-chunks` is not specified, it defaults to 3 chunks.
 
 ## Contributing
 
