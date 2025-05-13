@@ -46,29 +46,27 @@ The `splittt` executable takes the following command-line arguments:
 
 *   `-i, --input <INPUT>`: Path to the input PDF file.
 *   `-o, --output <OUTPUT>`: Path to the output directory where the chunks will be saved.
-*   `-m, --mode <MODE>`: Splitting mode. Can be `page-size` (default) or `num-chunks`.
-*   `-c, --chunk-size <CHUNK_SIZE>`: Number of pages per chunk (used with `--mode page-size`, default: 10).
-*   `--num-chunks <NUM_CHUNKS>`: Number of equal chunks (used with `--mode num-chunks`, default: 3).
+*   `-s, --split <SPLIT>`: Splitting method. Specify the number of pages per chunk (e.g., `30`) or the number of equal chunks (e.g., `c5`).
 
 ### Splitting by Page Size
 
-To split the PDF into chunks of a specified number of pages, use the `--mode page-size` argument (or omit it, as it's the default) and the `-c, --chunk-size` argument:
+To split the PDF into chunks of a specified number of pages, use the `-s, --split` argument with the desired number of pages:
 
 ```bash
-./target/release/splittt -i input.pdf -o output_chunks -m page-size -c 5
+./target/release/splittt -i input.pdf -o output_chunks -s 5
 ```
 
 This command will split `input.pdf` into chunks of 5 pages each and save them in the `output_chunks` directory.
 
 ### Splitting into N Equal Chunks
 
-To split the PDF into a specified number of equal chunks, use the `--mode num-chunks` argument and the `--num-chunks` argument:
+To split the PDF into a specified number of equal chunks, use the `-s, --split` argument with `c` followed by the number of chunks:
 
 ```bash
-./target/release/splittt -i input.pdf -o output_chunks -m num-chunks --num-chunks 3
+./target/release/splittt -i input.pdf -o output_chunks -s c3
 ```
 
-This command will split `input.pdf` into 3 equal chunks and save them in the `output_chunks` directory. If `--num-chunks` is not specified, it defaults to 3 chunks.
+This command will split `input.pdf` into 3 equal chunks and save them in the `output_chunks` directory.
 
 ## Contributing
 

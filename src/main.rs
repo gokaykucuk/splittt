@@ -1,16 +1,7 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use lopdf::Document;
 use std::path::PathBuf;
 use std::fs;
-
-/// Defines the splitting mode for the PDF.
-#[derive(ValueEnum, Clone, Debug)]
-enum SplitMode {
-    /// Split the PDF into a specified number of equal chunks.
-    NumChunks,
-    /// Split the PDF into chunks of a specified number of pages.
-    PageSize,
-}
 
 /// A command line tool to chunk and save a given pdf file into a new folder.
 #[derive(Parser, Debug, Clone)]
@@ -24,17 +15,9 @@ struct Args {
     #[arg(short, long)]
     output: PathBuf,
 
-    /// Splitting mode
-    #[arg(short, long, value_enum, default_value_t = SplitMode::PageSize)]
-    mode: SplitMode,
-
-    /// Number of pages per chunk (used with --mode page-size)
-    #[arg(short, long, default_value_t = 10)]
-    chunk_size: usize,
-
-    /// Number of equal chunks (used with --mode num-chunks)
-    #[arg(long)]
-    num_chunks: Option<usize>,
+    /// Splitting method: specify number of pages per chunk (e.g., -s 30) or number of equal chunks (e.g., -s c5)
+    #[arg(short, long)]
+    split: String,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -47,15 +30,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create the output directory if it doesn't exist
     fs::create_dir_all(&args.output)?;
 
-    let chunk_size = match args.mode {
-        SplitMode::PageSize => args.chunk_size,
-        SplitMode::NumChunks => {
-            let num_chunks = args.num_chunks.unwrap_or(3); // Default to 3 chunks if not specified
-            if num_chunks == 0 {
-                return Err("Number of chunks cannot be zero.".into());
-            }
-            (num_pages + num_chunks - 1) / num_chunks // Calculate chunk size
+    let chunk_size = if args.split.starts_with('c') {
+        let num_chunks = args.split[1..].parse::<usize>()?;
+        if num_chunks == 0 {
+            return Err("Number of chunks cannot be zero.".into());
         }
+        (num_pages + num_chunks - 1) / num_chunks // Calculate chunk size
+    } else {
+        args.split.parse::<usize>()? // Parse as page size
     };
 
     // Chunk and save the PDF
@@ -91,33 +73,57 @@ mod tests {
     use super::*;
     use std::path::Path;
 
+    // Helper function to call main with specific arguments for testing
+    fn main_with_args(args: &Args) -> Result<(), Box<dyn std::error::Error>> {
+        let doc = Document::load(&args.input)?;
+        let num_pages = doc.get_pages().len();
+        fs::create_dir_all(&args.output)?;
+
+        let chunk_size = if args.split.starts_with('c') {
+            let num_chunks = args.split[1..].parse::<usize>()?;
+            if num_chunks == 0 {
+                return Err("Number of chunks cannot be zero.".into());
+            }
+            (num_pages + num_chunks - 1) / num_chunks
+        } else {
+            args.split.parse::<usize>()?
+        };
+
+        for (chunk_index, start_page) in (0..num_pages).step_by(chunk_size).enumerate() {
+            let end_page = (start_page + chunk_size).min(num_pages);
+            let output_path = args.output.join(format!("chunk_{}.pdf", chunk_index + 1));
+
+            let mut chunk_doc = doc.clone();
+            let pages_to_keep: Vec<u32> = (start_page as u32 + 1..=end_page as u32).collect();
+            let all_pages: Vec<u32> = (1..=num_pages as u32).collect();
+            let pages_to_delete: Vec<u32> = all_pages.into_iter().filter(|p| !pages_to_keep.contains(p)).collect();
+            chunk_doc.delete_pages(&pages_to_delete);
+            chunk_doc.save(&output_path)?;
+        }
+        Ok(())
+    }
+
     #[test]
     fn test_pdf_chunking_page_size() -> Result<(), Box<dyn std::error::Error>> {
-        // Using the provided test.pdf
         let dummy_pdf_path = Path::new("test.pdf");
         let output_dir = Path::new("test_output_page_size");
 
-        // Ensure the output directory is clean before testing
         if output_dir.exists() {
             fs::remove_dir_all(output_dir)?;
         }
 
-        // Create dummy arguments for page size mode
         let args = Args {
             input: dummy_pdf_path.to_path_buf(),
             output: output_dir.to_path_buf(),
-            mode: SplitMode::PageSize,
-            chunk_size: 2, // Chunk size of 2 for testing
-            num_chunks: None,
+            split: "2".to_string(), // Page size of 2
         };
 
-        // Run the main logic with dummy arguments
-        main_with_args(&args)?; // Pass a reference
+        main_with_args(&args)?;
 
-        // Verify the output files
         let doc = Document::load(dummy_pdf_path)?;
         let num_pages = doc.get_pages().len();
-        let expected_chunks = (num_pages + args.chunk_size - 1) / args.chunk_size;
+        let chunk_size = args.split.parse::<usize>()?;
+        let expected_chunks = (num_pages + chunk_size - 1) / chunk_size;
 
         let mut chunk_count = 0;
         if output_dir.exists() {
@@ -132,38 +138,29 @@ mod tests {
 
         assert_eq!(chunk_count, expected_chunks, "Incorrect number of chunks created for page size mode");
 
-        // TODO: Add more assertions, e.g., check file sizes or attempt to read chunks
-
         Ok(())
     }
 
     #[test]
     fn test_pdf_chunking_num_chunks() -> Result<(), Box<dyn std::error::Error>> {
-        // Using the provided test.pdf
         let dummy_pdf_path = Path::new("test.pdf");
         let output_dir = Path::new("test_output_num_chunks");
 
-        // Ensure the output directory is clean before testing
         if output_dir.exists() {
             fs::remove_dir_all(output_dir)?;
         }
 
-        // Create dummy arguments for number of chunks mode
         let args = Args {
             input: dummy_pdf_path.to_path_buf(),
             output: output_dir.to_path_buf(),
-            mode: SplitMode::NumChunks,
-            chunk_size: 10, // Default chunk size (not used in this mode)
-            num_chunks: Some(3), // Split into 3 chunks
+            split: "c3".to_string(), // Split into 3 chunks
         };
 
-        // Run the main logic with dummy arguments
-        main_with_args(&args)?; // Pass a reference
+        main_with_args(&args)?;
 
-        // Verify the output files
         let doc = Document::load(dummy_pdf_path)?;
         let num_pages = doc.get_pages().len();
-        let num_chunks = args.num_chunks.unwrap_or(3);
+        let num_chunks = args.split[1..].parse::<usize>()?;
         let expected_chunks = num_chunks;
 
         let mut chunk_count = 0;
@@ -179,40 +176,6 @@ mod tests {
 
         assert_eq!(chunk_count, expected_chunks, "Incorrect number of chunks created for number of chunks mode");
 
-        // TODO: Add more assertions, e.g., check file sizes or attempt to read chunks
-
-        Ok(())
-    }
-
-
-    // Helper function to call main with specific arguments for testing
-    fn main_with_args(args: &Args) -> Result<(), Box<dyn std::error::Error>> { // Accept a reference
-        let doc = Document::load(&args.input)?;
-        let num_pages = doc.get_pages().len();
-        fs::create_dir_all(&args.output)?;
-
-        let chunk_size = match args.mode {
-            SplitMode::PageSize => args.chunk_size,
-            SplitMode::NumChunks => {
-                let num_chunks = args.num_chunks.unwrap_or(3);
-                if num_chunks == 0 {
-                    return Err("Number of chunks cannot be zero.".into());
-                }
-                (num_pages + num_chunks - 1) / num_chunks
-            }
-        };
-
-        for (chunk_index, start_page) in (0..num_pages).step_by(chunk_size).enumerate() {
-            let end_page = (start_page + chunk_size).min(num_pages);
-            let output_path = args.output.join(format!("chunk_{}.pdf", chunk_index + 1));
-
-            let mut chunk_doc = doc.clone();
-            let pages_to_keep: Vec<u32> = (start_page as u32 + 1..=end_page as u32).collect();
-            let all_pages: Vec<u32> = (1..=num_pages as u32).collect();
-            let pages_to_delete: Vec<u32> = all_pages.into_iter().filter(|p| !pages_to_keep.contains(p)).collect();
-            chunk_doc.delete_pages(&pages_to_delete);
-            chunk_doc.save(&output_path)?;
-        }
         Ok(())
     }
 }
