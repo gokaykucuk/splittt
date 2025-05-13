@@ -57,7 +57,7 @@ jobs:
         run: |
           echo "COMMITS<<EOF" >> $GITHUB_OUTPUT
           git log -5 --pretty=format:"- %s (%cd)" --date=iso >> $GITHUB_OUTPUT
-echo "EOF" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
