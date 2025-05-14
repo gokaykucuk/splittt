@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - 'v*.*.*' # Trigger on version tags
 
 jobs:
   test:
