@@ -49,20 +49,11 @@ jobs:
     needs: build # Ensure builds complete before creating release
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Fetch all history to get commit messages
-
-      - name: Get latest commits
-        id: get_commits
-        run: |
-          echo "COMMITS<<EOF" >> $GITHUB_OUTPUT
-          git log -5 --pretty=format:"- %s (%cd)" --date=iso >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+        with: {} # No need to fetch all history
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          body: ${{ steps.get_commits.outputs.COMMITS }}
           draft: false
           prerelease: false
           files: |
